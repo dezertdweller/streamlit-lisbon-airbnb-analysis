@@ -2,8 +2,10 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.figure_factory as ff
+import seaborn as sns
 import data_utils.data_utils as du
 from config import IMAGE_PATH
+import matplotlib.colors as mcolors
 import data_utils.data_cleaning as dc
 
 st.title("Lisbon AirBnB Market Analysis")
@@ -69,11 +71,24 @@ st.dataframe(df[cols_simple])
 # most expensive airbnbs and their locations on the map
 st.header("Top 1% Most Expensive AirBnB Locations and Prices")
 st.markdown("""
-            Some text here to explain the map and table.""")
+            The most expensive AirBnBs in Lisbon are concentrated near the coastline.
+            The prices range from \$800 to \$9,200 per night.""")
 top_1_perc = du.calculate_percentile(df, 'price', 0.99)
-st.map(df.query("price >= @top_1_perc")[["latitude", "longitude"]])
+st.map(df.query("price >= @top_1_perc")[["latitude", "longitude"]], color='#0C9B98')
+
+# top 5 most expensive listings details
+st.subheader('Details About the 5 Most Expensive Listings')
 most_exp_listings = df[df['price'] >= top_1_perc].sort_values('price', ascending=False)
-st.dataframe(most_exp_listings[cols_simple])
+st.dataframe(most_exp_listings[['name', 'host_name', 'price', 'accommodates', 'bedrooms']].head(5))
+
+# most expensive listings grouped by price
+st.subheader('Price Ranges for Top 1% Most Expensive Listings')
+bins = [799, 1200, 3000, 5000, 7000, 10000]
+labels = ['799 - 1,199', '1,200 to 2,999', '3,000 - 4,999', '5,000 - 6,999', '7,000+']
+most_exp_listings['cost_range'] = pd.cut(most_exp_listings['price'], bins=bins, labels=labels, right=False)
+expensive_categories = most_exp_listings.groupby('cost_range')['id'].count().reset_index()
+expensive_categories.columns = ['Cost Per Night', 'Count of Listings']
+st.dataframe(expensive_categories)
 
 # price distribution excluing top 5% most expensive listings
 st.header("Lisbon AirBnB Price Distribution Excluding Top 5%")
@@ -97,3 +112,42 @@ st.table(mean_med_price_limit)
 st.subheader('Mean and Median Prices Per Night for All Stays')
 mean_med_price = du.mean_and_median_compare(df, 'room_type', 'price')
 st.table(mean_med_price)
+
+# neighboord and room price analysis
+st.header('Price Variation by Neighborhood and by Average Number of Rooms')
+st.markdown("""
+            Some text here to analyze chart and map.""")
+# create new df excluding hotels 
+df_no_hotels = df.drop(df[df['bedrooms'] >= 20].index)
+# create new mean median price compare for each neighborhood
+df_neighbourhoods = du.mean_and_median_compare(df_no_hotels, 'neighbourhood_group_cleansed', 'price')
+# calculate avg bedrooms per neighborhood
+df_neighbourhoods_rooms = df_no_hotels.groupby('neighbourhood_group_cleansed')['bedrooms'].mean().round(1).reset_index()
+# merge new neighbourhood dfs
+df_avg_room_price = pd.merge(df_neighbourhoods, df_neighbourhoods_rooms, on='neighbourhood_group_cleansed')
+# calculate average price per room for each neighborhood
+df_avg_room_price['avg_price_per_room'] = (df_avg_room_price['price_mean'] / df_avg_room_price['bedrooms']).round(2)
+# rename columns
+new_columns = ['Neighbourhood', 'Mean Price', 'Median Price', 'Avg # of Bedrooms', 'Avg Price per Bedroom']
+df_avg_room_price.columns = new_columns
+# sort df by price per room in descending order
+df_avg_room_price_sorted = df_avg_room_price.sort_values('Avg Price per Bedroom', ascending=False)
+
+st.dataframe(df_avg_room_price_sorted)
+
+# assign color to each neighborhood
+# color palette
+color_palette = sns.color_palette("husl", 16)
+
+# create dictionary to assign each neighborhood a color
+neighbourhoods = df['neighbourhood_group_cleansed'].unique()
+color_mapping = {neighbourhood: mcolors.to_hex(color_palette[i]) for i, neighbourhood in enumerate(neighbourhoods)}
+
+# create new column
+df['color'] = df['neighbourhood_group_cleansed'].map(color_mapping)
+
+# display the map
+st.map(data=df, color='color')
+
+# NOTE I AM TRYING TO FIGURE OUT HOW TO ADD COLOR KEY TO MAP
+

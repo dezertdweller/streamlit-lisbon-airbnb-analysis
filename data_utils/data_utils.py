@@ -15,7 +15,6 @@ def calculate_percentile(df, col, n):
     n = n / 100 if n > 1 else n
 
     percentile_value = df[col].quantile(n)
-    print(f"The {col}'s {n}th percentile value is {percentile_value}.")
 
     return percentile_value
 
