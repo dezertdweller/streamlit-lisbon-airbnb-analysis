@@ -23,6 +23,8 @@ st.markdown("""My aim with this project is to provide analysis on the Lisbon Air
             10 tiny homes on a property just outside of Lisbon. This quiet refuge aims to provide
             a luxurious home away from home experience for those interested in relaxation and 
             exciting tourism opportunities. 
+
+            More details here.
             """)
 st.subheader("**Quinta Nere Maitia**")
 st.image(IMAGE_PATH + 'quinta-1.jpeg')
